@@ -1,0 +1,85 @@
+@startuml
+
+skinparam actorStyle awesome
+skinparam packageStyle rectangle
+
+actor "Admin" as Admin
+actor "Karyawan" as Karyawan
+
+rectangle "Sistem Inventaris Mixue" {
+  ' Shared Use Cases (tengah)
+  usecase "Login" as UC_Login
+  usecase "Logout" as UC_Logout
+  usecase "Validasi Kredensial" as UC_Validasi
+  usecase "Scan QR Code" as UC_ScanQR
+  usecase "Update Stok" as UC_UpdateStok
+  
+  ' Admin Use Cases (kiri)
+  usecase "Lihat Dashboard" as UC_Dashboard
+  usecase "Kelola User" as UC_KelolaUser
+  usecase "Tambah User" as UC_TambahUser
+  usecase "Edit User" as UC_EditUser
+  usecase "Hapus User" as UC_HapusUser
+  usecase "Kelola Barang" as UC_KelolaBarang
+  usecase "Tambah Barang" as UC_TambahBarang
+  usecase "Edit Barang" as UC_EditBarang
+  usecase "Hapus Barang" as UC_HapusBarang
+  usecase "Kelola Order" as UC_KelolaOrder
+  usecase "Buat Order" as UC_BuatOrder
+  usecase "Update Status Order" as UC_UpdateOrder
+  usecase "Kelola Refund" as UC_KelolaRefund
+  usecase "Proses Refund" as UC_ProsesRefund
+  usecase "Approve/Reject Refund" as UC_ApproveRefund
+  usecase "Lihat Laporan" as UC_Laporan
+  usecase "Export Laporan" as UC_ExportLaporan
+  
+  ' Karyawan Use Cases (kanan)
+  usecase "Input Barang Masuk" as UC_BarangMasuk
+  usecase "Input Barang Terpakai" as UC_BarangTerpakai
+  usecase "Input Barang Expired" as UC_BarangExpired
+  usecase "Lihat Daftar Barang" as UC_DaftarBarang
+}
+
+' Admin Associations
+Admin -- UC_Login
+Admin -- UC_Logout
+Admin -- UC_Dashboard
+Admin -- UC_KelolaUser
+Admin -- UC_KelolaBarang
+Admin -- UC_KelolaOrder
+Admin -- UC_KelolaRefund
+Admin -- UC_Laporan
+
+' Karyawan Associations
+UC_Login -- Karyawan
+UC_Logout -- Karyawan
+UC_BarangMasuk -- Karyawan
+UC_BarangTerpakai -- Karyawan
+UC_BarangExpired -- Karyawan
+UC_DaftarBarang -- Karyawan
+
+' Include Relationships
+UC_Login .> UC_Validasi : <<include>>
+UC_TambahBarang .> UC_ScanQR : <<include>>
+UC_BarangMasuk .> UC_ScanQR : <<include>>
+UC_BarangTerpakai .> UC_ScanQR : <<include>>
+UC_BarangExpired .> UC_ScanQR : <<include>>
+UC_BarangMasuk .> UC_UpdateStok : <<include>>
+UC_BarangTerpakai .> UC_UpdateStok : <<include>>
+UC_BarangExpired .> UC_UpdateStok : <<include>>
+UC_ProsesRefund .> UC_UpdateStok : <<include>>
+
+' Extend Relationships
+UC_TambahUser .> UC_KelolaUser : <<extend>>
+UC_EditUser .> UC_KelolaUser : <<extend>>
+UC_HapusUser .> UC_KelolaUser : <<extend>>
+UC_TambahBarang .> UC_KelolaBarang : <<extend>>
+UC_EditBarang .> UC_KelolaBarang : <<extend>>
+UC_HapusBarang .> UC_KelolaBarang : <<extend>>
+UC_BuatOrder .> UC_KelolaOrder : <<extend>>
+UC_UpdateOrder .> UC_KelolaOrder : <<extend>>
+UC_ProsesRefund .> UC_KelolaRefund : <<extend>>
+UC_ApproveRefund .> UC_KelolaRefund : <<extend>>
+UC_ExportLaporan .> UC_Laporan : <<extend>>
+
+@enduml

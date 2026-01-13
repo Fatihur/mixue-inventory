@@ -1,0 +1,586 @@
+@startuml Sequence Diagram - Login
+
+actor "User\n(Admin/Karyawan)" as User
+participant "LoginScreen" as Login
+participant "AuthProvider" as AuthProv
+participant "AuthService" as AuthSvc
+participant "Firebase Auth" as FBAuth
+database "Firestore" as DB
+
+User -> Login : Masukkan email & password
+activate Login
+
+Login -> AuthProv : signIn(email, password)
+activate AuthProv
+
+AuthProv -> AuthSvc : signInWithEmailAndPassword(email, password)
+activate AuthSvc
+
+AuthSvc -> FBAuth : signInWithEmailAndPassword()
+activate FBAuth
+FBAuth --> AuthSvc : UserCredential
+deactivate FBAuth
+
+AuthSvc -> DB : get users/{uid}
+activate DB
+DB --> AuthSvc : UserDocument
+deactivate DB
+
+alt User status == 'nonaktif'
+    AuthSvc -> FBAuth : signOut()
+    AuthSvc --> AuthProv : throw CustomAuthException
+    AuthProv --> Login : error "Akun dinonaktifkan"
+    Login --> User : Tampilkan pesan error
+else User status == 'aktif'
+    AuthSvc --> AuthProv : UserModel
+    deactivate AuthSvc
+    
+    AuthProv --> Login : success
+    deactivate AuthProv
+    
+    alt role == 'admin'
+        Login --> User : Navigate to DashboardAdmin
+    else role == 'karyawan'
+        Login --> User : Navigate to DashboardKaryawan
+    end
+end
+
+deactivate Login
+
+@enduml
+
+
+@startuml Sequence Diagram - Tambah Barang dengan Scan QR
+
+actor "Admin" as Admin
+participant "ManajemenBarangScreen" as Screen
+participant "MobileScanner" as Scanner
+participant "FirestoreService" as FSSvc
+database "Firestore" as DB
+
+Admin -> Screen : Klik tombol "Tambah"
+activate Screen
+
+Screen -> Screen : showAddBarangDialog()
+Screen --> Admin : Tampilkan form tambah barang
+
+Admin -> Screen : Klik tombol scan QR
+Screen -> Scanner : _scanQRCode()
+activate Scanner
+
+Scanner -> Scanner : Buka kamera
+Scanner --> Admin : Tampilkan preview kamera
+
+Admin -> Scanner : Arahkan ke QR Code
+Scanner -> Scanner : onDetect(capture)
+Scanner --> Screen : return barcode value
+deactivate Scanner
+
+Screen -> Screen : Set barcode ke TextField
+Screen --> Admin : Tampilkan barcode hasil scan
+
+Admin -> Screen : Lengkapi data barang
+Admin -> Screen : Klik "Simpan"
+
+Screen -> Screen : validate form
+alt Form valid
+    Screen -> FSSvc : addBarang(BarangModel)
+    activate FSSvc
+    
+    FSSvc -> DB : collection('barang').add()
+    activate DB
+    DB --> FSSvc : DocumentReference
+    deactivate DB
+    
+    FSSvc --> Screen : success
+    deactivate FSSvc
+    
+    Screen -> Screen : Navigator.pop()
+    Screen --> Admin : SnackBar "Barang berhasil ditambahkan"
+else Form tidak valid
+    Screen --> Admin : Tampilkan error validasi
+end
+
+deactivate Screen
+
+@enduml
+
+
+@startuml Sequence Diagram - Input Barang Masuk
+
+actor "Karyawan" as User
+participant "BarangMasukScreen" as Screen
+participant "MobileScanner" as Scanner
+participant "FirestoreService" as FSSvc
+participant "AuthProvider" as AuthProv
+database "Firestore" as DB
+
+User -> Screen : Klik "Scan Barcode"
+activate Screen
+
+Screen -> Scanner : showModalBottomSheet()
+activate Scanner
+Scanner --> User : Tampilkan kamera
+
+User -> Scanner : Scan barcode barang
+Scanner -> Scanner : onDetect(capture)
+Scanner --> Screen : return barcode
+deactivate Scanner
+
+Screen -> FSSvc : getBarangByBarcode(barcode)
+activate FSSvc
+FSSvc -> DB : query where barcode == value
+activate DB
+DB --> FSSvc : QuerySnapshot
+deactivate DB
+
+alt Barang ditemukan
+    FSSvc --> Screen : BarangModel
+    deactivate FSSvc
+    Screen -> Screen : setState(_selectedBarang)
+    Screen --> User : Tampilkan info barang
+    
+    User -> Screen : Input jumlah dan keterangan
+    User -> Screen : Klik "Simpan Barang Masuk"
+    
+    Screen -> Screen : validate form
+    Screen -> AuthProv : get current user
+    activate AuthProv
+    AuthProv --> Screen : UserModel
+    deactivate AuthProv
+    
+    Screen -> FSSvc : addBarangMasuk(BarangMasukModel)
+    activate FSSvc
+    
+    FSSvc -> DB : collection('barang_masuk').add()
+    activate DB
+    DB --> FSSvc : success
+    deactivate DB
+    
+    FSSvc -> DB : updateStok(barangId, +jumlah)
+    activate DB
+    DB --> FSSvc : success
+    deactivate DB
+    
+    FSSvc --> Screen : success
+    deactivate FSSvc
+    
+    Screen --> User : SnackBar "Barang masuk berhasil disimpan"
+    Screen -> Screen : Clear form
+    
+else Barang tidak ditemukan
+    FSSvc --> Screen : null
+    Screen --> User : SnackBar "Barang tidak ditemukan"
+end
+
+deactivate Screen
+
+@enduml
+
+
+@startuml Sequence Diagram - Input Barang Terpakai
+
+actor "Karyawan" as User
+participant "BarangTerpakaiScreen" as Screen
+participant "MobileScanner" as Scanner
+participant "FirestoreService" as FSSvc
+participant "AuthProvider" as AuthProv
+database "Firestore" as DB
+
+User -> Screen : Klik "Scan Barcode"
+activate Screen
+
+Screen -> Scanner : showModalBottomSheet()
+activate Scanner
+Scanner --> User : Tampilkan kamera
+
+User -> Scanner : Scan barcode barang
+Scanner --> Screen : return barcode
+deactivate Scanner
+
+Screen -> FSSvc : getBarangByBarcode(barcode)
+activate FSSvc
+FSSvc -> DB : query where barcode == value
+activate DB
+DB --> FSSvc : BarangModel
+deactivate DB
+FSSvc --> Screen : BarangModel
+deactivate FSSvc
+
+Screen --> User : Tampilkan info barang
+
+User -> Screen : Input jumlah dan keterangan
+User -> Screen : Klik "Simpan"
+
+Screen -> Screen : validate form
+
+alt Jumlah <= stok tersedia
+    Screen -> AuthProv : get current user
+    activate AuthProv
+    AuthProv --> Screen : UserModel
+    deactivate AuthProv
+    
+    Screen -> FSSvc : addBarangTerpakai(BarangTerpakaiModel)
+    activate FSSvc
+    
+    FSSvc -> DB : collection('barang_terpakai').add()
+    activate DB
+    DB --> FSSvc : success
+    deactivate DB
+    
+    FSSvc -> DB : updateStok(barangId, -jumlah)
+    activate DB
+    DB --> FSSvc : success
+    deactivate DB
+    
+    FSSvc --> Screen : success
+    deactivate FSSvc
+    
+    Screen --> User : SnackBar "Berhasil disimpan"
+else Jumlah > stok tersedia
+    Screen --> User : Error "Stok tidak mencukupi"
+end
+
+deactivate Screen
+
+@enduml
+
+
+@startuml Sequence Diagram - Input Barang Expired
+
+actor "Karyawan" as User
+participant "BarangExpiredScreen" as Screen
+participant "MobileScanner" as Scanner
+participant "FirestoreService" as FSSvc
+participant "AuthProvider" as AuthProv
+database "Firestore" as DB
+
+User -> Screen : Klik "Scan Barcode"
+activate Screen
+
+Screen -> Scanner : showModalBottomSheet()
+activate Scanner
+Scanner --> User : Tampilkan kamera
+
+User -> Scanner : Scan barcode barang
+Scanner --> Screen : return barcode
+deactivate Scanner
+
+Screen -> FSSvc : getBarangByBarcode(barcode)
+activate FSSvc
+FSSvc -> DB : query barang
+activate DB
+DB --> FSSvc : BarangModel
+deactivate DB
+FSSvc --> Screen : BarangModel
+deactivate FSSvc
+
+Screen --> User : Tampilkan info barang
+
+User -> Screen : Input jumlah dan tanggal expired
+User -> Screen : Klik "Simpan"
+
+Screen -> AuthProv : get current user
+activate AuthProv
+AuthProv --> Screen : UserModel
+deactivate AuthProv
+
+Screen -> FSSvc : addBarangExpired(BarangExpiredModel)
+activate FSSvc
+
+FSSvc -> DB : collection('expired').add()
+activate DB
+DB --> FSSvc : success
+deactivate DB
+
+FSSvc -> DB : updateStok(barangId, -jumlah)
+activate DB
+DB --> FSSvc : success
+deactivate DB
+
+FSSvc --> Screen : success
+deactivate FSSvc
+
+Screen --> User : SnackBar "Berhasil disimpan"
+Screen -> Screen : Clear form
+
+deactivate Screen
+
+@enduml
+
+
+@startuml Sequence Diagram - Manajemen User
+
+actor "Admin" as Admin
+participant "ManajemenUserScreen" as Screen
+participant "AuthService" as AuthSvc
+participant "FirestoreService" as FSSvc
+participant "Firebase Auth" as FBAuth
+database "Firestore" as DB
+
+== Lihat Daftar User ==
+Admin -> Screen : Buka halaman Manajemen User
+activate Screen
+
+Screen -> FSSvc : getUsers() [Stream]
+activate FSSvc
+FSSvc -> DB : collection('users').snapshots()
+activate DB
+DB --> FSSvc : Stream<List<UserModel>>
+deactivate DB
+FSSvc --> Screen : Stream<List<UserModel>>
+deactivate FSSvc
+
+Screen --> Admin : Tampilkan daftar user
+
+== Tambah User Baru ==
+Admin -> Screen : Klik "Tambah User"
+Screen --> Admin : Tampilkan form
+
+Admin -> Screen : Isi data user
+Admin -> Screen : Klik "Simpan"
+
+Screen -> AuthSvc : createUserByAdmin(email, password, nama, role)
+activate AuthSvc
+
+AuthSvc -> FBAuth : createUserWithEmailAndPassword()
+activate FBAuth
+FBAuth --> AuthSvc : UserCredential
+deactivate FBAuth
+
+AuthSvc -> DB : collection('users').doc(uid).set()
+activate DB
+DB --> AuthSvc : success
+deactivate DB
+
+AuthSvc -> FBAuth : signOut() [logout user baru]
+activate FBAuth
+FBAuth --> AuthSvc : success
+deactivate FBAuth
+
+AuthSvc --> Screen : UserModel
+deactivate AuthSvc
+
+Screen --> Admin : SnackBar "User berhasil ditambahkan"
+
+== Toggle Status User ==
+Admin -> Screen : Klik toggle aktif/nonaktif
+Screen -> FSSvc : updateUser(uid, {status: 'nonaktif'})
+activate FSSvc
+FSSvc -> DB : update users/{uid}
+activate DB
+DB --> FSSvc : success
+deactivate DB
+FSSvc --> Screen : success
+deactivate FSSvc
+
+Screen --> Admin : Status user berubah
+
+deactivate Screen
+
+@enduml
+
+
+@startuml Sequence Diagram - Lihat Laporan
+
+actor "Admin" as Admin
+participant "LaporanScreen" as Screen
+participant "FirestoreService" as FSSvc
+participant "ExportService" as Export
+database "Firestore" as DB
+
+Admin -> Screen : Buka halaman Laporan
+activate Screen
+
+== Filter Tanggal ==
+Admin -> Screen : Pilih rentang tanggal
+Screen -> Screen : setState(startDate, endDate)
+
+== Load Data Laporan ==
+Screen -> FSSvc : getBarangMasuk(startDate, endDate)
+activate FSSvc
+FSSvc -> DB : query dengan filter tanggal
+activate DB
+DB --> FSSvc : List<BarangMasukModel>
+deactivate DB
+FSSvc --> Screen : data
+deactivate FSSvc
+
+Screen -> FSSvc : getBarangTerpakai(startDate, endDate)
+activate FSSvc
+FSSvc -> DB : query dengan filter tanggal
+activate DB
+DB --> FSSvc : List<BarangTerpakaiModel>
+deactivate DB
+FSSvc --> Screen : data
+deactivate FSSvc
+
+Screen -> FSSvc : getBarangExpired(startDate, endDate)
+activate FSSvc
+FSSvc -> DB : query dengan filter tanggal
+activate DB
+DB --> FSSvc : List<BarangExpiredModel>
+deactivate DB
+FSSvc --> Screen : data
+deactivate FSSvc
+
+Screen -> Screen : Kalkulasi summary
+Screen --> Admin : Tampilkan laporan & grafik
+
+== Export Laporan ==
+Admin -> Screen : Klik "Export"
+Screen -> Export : generateReport(data)
+activate Export
+Export -> Export : Format data ke Excel/PDF
+Export --> Screen : File path
+deactivate Export
+
+Screen -> Screen : Share file
+Screen --> Admin : File berhasil di-export
+
+deactivate Screen
+
+@enduml
+
+
+@startuml Sequence Diagram - Notifikasi Stok Rendah
+
+actor "User" as User
+participant "Dashboard" as Dashboard
+participant "FirestoreService" as FSSvc
+database "Firestore" as DB
+
+User -> Dashboard : Buka Dashboard
+activate Dashboard
+
+Dashboard -> FSSvc : getBarang() [Stream]
+activate FSSvc
+FSSvc -> DB : collection('barang').snapshots()
+activate DB
+DB --> FSSvc : Stream<List<BarangModel>>
+deactivate DB
+FSSvc --> Dashboard : Stream<List<BarangModel>>
+deactivate FSSvc
+
+loop Untuk setiap barang
+    Dashboard -> Dashboard : Hitung jumlahBox = stok / pcsPerBox
+    Dashboard -> Dashboard : Cek isStokRendah = (jumlahBox <= stokMinimal)
+end
+
+alt Ada barang dengan stok rendah
+    Dashboard -> Dashboard : Filter barang stok rendah
+    Dashboard --> User : Tampilkan notifikasi stok rendah
+    Dashboard --> User : Tampilkan list barang dengan warning icon
+else Semua stok aman
+    Dashboard --> User : Tampilkan status semua stok aman
+end
+
+deactivate Dashboard
+
+@enduml
+
+
+@startuml Sequence Diagram - Input Order
+
+actor "Admin" as Admin
+participant "ManajemenOrderScreen" as Screen
+participant "FirestoreService" as FSSvc
+database "Firestore" as DB
+
+Admin -> Screen : Klik tombol "Tambah Order"
+activate Screen
+
+Screen --> Admin : Tampilkan form order
+
+Admin -> Screen : Pilih barang dari daftar
+Admin -> Screen : Input jumlah order
+Admin -> Screen : Tambahkan ke keranjang
+
+loop Tambah barang lain
+    Admin -> Screen : Pilih barang lain
+    Admin -> Screen : Input jumlah
+end
+
+Admin -> Screen : Klik "Simpan Order"
+
+Screen -> Screen : validate form
+Screen -> FSSvc : generateOrderNumber()
+activate FSSvc
+FSSvc -> DB : query order hari ini
+activate DB
+DB --> FSSvc : count
+deactivate DB
+FSSvc --> Screen : nomor order
+deactivate FSSvc
+
+Screen -> FSSvc : addOrder(OrderModel)
+activate FSSvc
+
+FSSvc -> DB : collection('order').add()
+activate DB
+DB --> FSSvc : success
+deactivate DB
+
+loop Untuk setiap item
+    FSSvc -> DB : updateStok(barangId, -jumlah)
+    activate DB
+    DB --> FSSvc : success
+    deactivate DB
+end
+
+FSSvc --> Screen : success
+deactivate FSSvc
+
+Screen --> Admin : SnackBar "Order berhasil disimpan"
+Screen -> Screen : Clear form
+
+deactivate Screen
+
+@enduml
+
+
+@startuml Sequence Diagram - Input Refund
+
+actor "Admin" as Admin
+participant "ManajemenRefundScreen" as Screen
+participant "FirestoreService" as FSSvc
+database "Firestore" as DB
+
+Admin -> Screen : Klik tombol "Tambah Refund"
+activate Screen
+
+Screen --> Admin : Tampilkan form refund
+
+Admin -> Screen : Pilih order yang akan di-refund
+Admin -> Screen : Input jumlah refund
+Admin -> Screen : Input alasan refund
+Admin -> Screen : Klik "Simpan"
+
+Screen -> Screen : validate form
+
+Screen -> FSSvc : addRefund(RefundModel)
+activate FSSvc
+
+FSSvc -> DB : collection('refund').add()
+activate DB
+DB --> FSSvc : success
+deactivate DB
+
+FSSvc --> Screen : success
+deactivate FSSvc
+
+Screen -> FSSvc : updateOrder(orderId, {status: 'refunded'})
+activate FSSvc
+FSSvc -> DB : update order/{orderId}
+activate DB
+DB --> FSSvc : success
+deactivate DB
+FSSvc --> Screen : success
+deactivate FSSvc
+
+Screen --> Admin : SnackBar "Refund berhasil disimpan"
+Screen -> Screen : Clear form
+
+deactivate Screen
+
+@enduml

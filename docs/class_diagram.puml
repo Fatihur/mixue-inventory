@@ -1,0 +1,169 @@
+@startuml
+
+' Abstract class for common transaction attributes
+abstract class TransaksiModel {
+  # id: String
+  # barangId: String
+  # namaBarang: String
+  # jumlah: int
+  # keterangan: String
+  # userId: String
+  # namaUser: String
+  --
+  + {abstract} toMap(): Map
+}
+
+class UserModel {
+  - uid: String
+  - nama: String
+  - email: String
+  - role: String
+  - status: String
+  - dibuatPada: DateTime
+  - diubahPada: DateTime
+  --
+  + fromFirestore(doc): UserModel
+  + toMap(): Map
+  + copyWith(): UserModel
+  + isAdmin: bool
+  + isActive: bool
+}
+
+class BarangModel {
+  - id: String
+  - nama: String
+  - barcode: String
+  - kategori: String
+  - satuan: String
+  - stok: int
+  - stokMinimal: int
+  - pcsPerBox: int
+  - harga: double
+  - deskripsi: String
+  - dibuatPada: DateTime
+  - diubahPada: DateTime
+  --
+  + fromFirestore(doc): BarangModel
+  + toMap(): Map
+  + copyWith(): BarangModel
+  + jumlahBox: int
+  + sisaPcs: int
+  + stokFormatted: String
+  + isStokRendah: bool
+}
+
+class BarangMasukModel {
+  - id: String
+  - barangId: String
+  - namaBarang: String
+  - jumlah: int
+  - keterangan: String
+  - userId: String
+  - namaUser: String
+  - tanggal: DateTime
+  --
+  + fromFirestore(doc): BarangMasukModel
+  + toMap(): Map
+}
+
+class BarangTerpakaiModel {
+  - id: String
+  - barangId: String
+  - namaBarang: String
+  - jumlah: int
+  - keterangan: String
+  - userId: String
+  - namaUser: String
+  - tanggal: DateTime
+  --
+  + fromFirestore(doc): BarangTerpakaiModel
+  + toMap(): Map
+}
+
+class BarangExpiredModel {
+  - id: String
+  - barangId: String
+  - namaBarang: String
+  - jumlah: int
+  - keterangan: String
+  - userId: String
+  - namaUser: String
+  - tanggalExpired: DateTime
+  - tanggalInput: DateTime
+  --
+  + fromFirestore(doc): BarangExpiredModel
+  + toMap(): Map
+}
+
+class OrderModel {
+  - id: String
+  - nomorOrder: String
+  - items: List<OrderItemModel>
+  - totalHarga: double
+  - status: String
+  - keterangan: String
+  - userId: String
+  - namaUser: String
+  - tanggal: DateTime
+  --
+  + fromFirestore(doc): OrderModel
+  + toMap(): Map
+}
+
+class OrderItemModel {
+  - barangId: String
+  - namaBarang: String
+  - jumlah: int
+  - harga: double
+  - subtotal: double
+  --
+  + fromMap(data): OrderItemModel
+  + toMap(): Map
+}
+
+class RefundModel {
+  - id: String
+  - orderId: String
+  - nomorOrder: String
+  - alasan: String
+  - jumlahRefund: double
+  - status: String
+  - userId: String
+  - namaUser: String
+  - tanggal: DateTime
+  --
+  + fromFirestore(doc): RefundModel
+  + toMap(): Map
+}
+
+' Generalization (Inheritance)
+TransaksiModel <|-- BarangMasukModel
+TransaksiModel <|-- BarangTerpakaiModel
+TransaksiModel <|-- BarangExpiredModel
+
+' Association - User creates transactions
+UserModel "1" --> "*" BarangMasukModel : creates >
+UserModel "1" --> "*" BarangTerpakaiModel : creates >
+UserModel "1" --> "*" BarangExpiredModel : creates >
+UserModel "1" --> "*" OrderModel : creates >
+UserModel "1" --> "*" RefundModel : creates >
+
+' Association - Barang referenced in transactions
+BarangModel "1" --> "*" BarangMasukModel : referenced by >
+BarangModel "1" --> "*" BarangTerpakaiModel : referenced by >
+BarangModel "1" --> "*" BarangExpiredModel : referenced by >
+BarangModel "1" --> "*" OrderItemModel : referenced by >
+
+' Composition - Order contains OrderItems
+OrderModel "1" *-- "*" OrderItemModel : contains >
+
+' Association - Refund references Order
+OrderModel "1" --> "*" RefundModel : has refund >
+
+' Dependency - Models depend on Firestore
+note right of UserModel
+  Semua model menggunakan
+  Firestore sebagai database
+end note
+
+@enduml

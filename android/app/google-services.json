@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1085417912868",
+    "project_id": "mixue-inventory-fdd04",
+    "storage_bucket": "mixue-inventory-fdd04.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1085417912868:android:26a775b6b0dd01c0e136b1",
+        "android_client_info": {
+          "package_name": "com.mixue.mixueinventory"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBvATPT47XbK3QQae1pqR389UaEQl5kCzQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

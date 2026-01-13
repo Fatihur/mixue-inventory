@@ -1,0 +1,266 @@
+@startuml Activity_Login_Logout
+
+partition "User" {
+    start
+    :Masuk ke halaman login;
+    :Masukkan email dan password;
+    :Validasi kredensial;
+    if (Kredensial valid?) then (yes)
+        :Akses berhasil;
+        :Ambil data user dari database;
+        if (Status user aktif?) then (yes)
+            :Redirect ke dashboard sesuai role;
+            :Gunakan fitur aplikasi;
+            :Pilih menu logout;
+            :Hapus session;
+            :Kembali ke halaman login;
+        else (no)
+            :Tampilkan pesan akun dinonaktifkan;
+            :Logout otomatis;
+        endif
+    else (no)
+        :Tampilkan pesan kesalahan;
+        :Ulangi memasukkan kredensial;
+    endif
+    stop
+}
+
+@enduml
+
+
+@startuml Activity_Tambah_Barang
+
+partition "Admin" {
+    start
+    :Buka menu Manajemen Barang;
+    :Klik tombol Tambah;
+    :Scan QR Code pada kemasan;
+    if (QR Code terdeteksi?) then (yes)
+        :Isi field barcode otomatis;
+        :Lengkapi data barang;
+        :Klik tombol Simpan;
+        if (Form valid?) then (yes)
+            :Simpan data ke database;
+            :Tampilkan notifikasi sukses;
+        else (no)
+            :Tampilkan pesan error;
+            :Perbaiki input;
+        endif
+    else (no)
+        :Tampilkan pesan QR tidak terdeteksi;
+        :Ulangi scan QR Code;
+    endif
+    stop
+}
+
+@enduml
+
+
+@startuml Activity_Barang_Masuk
+
+partition "Karyawan" {
+    start
+    :Buka menu Barang Masuk;
+    :Scan barcode barang;
+    if (Barang ditemukan?) then (yes)
+        :Tampilkan info barang;
+        :Input jumlah dan keterangan;
+        :Klik tombol Simpan;
+        if (Input valid?) then (yes)
+            :Simpan transaksi;
+            :Update stok bertambah;
+            :Tampilkan notifikasi sukses;
+        else (no)
+            :Tampilkan pesan error;
+            :Perbaiki input;
+        endif
+    else (no)
+        :Tampilkan pesan barang tidak ditemukan;
+        :Ulangi scan barcode;
+    endif
+    stop
+}
+
+@enduml
+
+
+@startuml Activity_Barang_Terpakai
+
+partition "Karyawan" {
+    start
+    :Buka menu Barang Terpakai;
+    :Scan barcode barang;
+    if (Barang ditemukan?) then (yes)
+        :Tampilkan info barang;
+        :Input jumlah dan keterangan;
+        :Klik tombol Simpan;
+        if (Jumlah tidak melebihi stok?) then (yes)
+            :Simpan transaksi;
+            :Update stok berkurang;
+            :Tampilkan notifikasi sukses;
+        else (no)
+            :Tampilkan pesan stok tidak mencukupi;
+            :Perbaiki jumlah input;
+        endif
+    else (no)
+        :Tampilkan pesan barang tidak ditemukan;
+        :Ulangi scan barcode;
+    endif
+    stop
+}
+
+@enduml
+
+
+@startuml Activity_Barang_Expired
+
+partition "Karyawan" {
+    start
+    :Buka menu Barang Expired;
+    :Scan barcode barang;
+    if (Barang ditemukan?) then (yes)
+        :Tampilkan info barang;
+        :Input jumlah dan tanggal expired;
+        :Klik tombol Simpan;
+        if (Input valid?) then (yes)
+            :Simpan transaksi;
+            :Update stok berkurang;
+            :Tampilkan notifikasi sukses;
+        else (no)
+            :Tampilkan pesan error;
+            :Perbaiki input;
+        endif
+    else (no)
+        :Tampilkan pesan barang tidak ditemukan;
+        :Ulangi scan barcode;
+    endif
+    stop
+}
+
+@enduml
+
+
+@startuml Activity_Manajemen_User
+
+partition "Admin" {
+    start
+    :Buka menu Manajemen User;
+    :Tampilkan daftar user;
+    if (Tambah user baru?) then (yes)
+        :Klik tombol Tambah User;
+        :Isi data user;
+        :Klik tombol Simpan;
+        if (Form valid?) then (yes)
+            :Buat akun di Firebase Auth;
+            :Simpan data ke database;
+            :Tampilkan notifikasi sukses;
+        else (no)
+            :Tampilkan pesan error;
+            :Perbaiki input;
+        endif
+    else (no)
+        :Klik toggle status user;
+        :Update status aktif atau nonaktif;
+    endif
+    stop
+}
+
+@enduml
+
+
+@startuml Activity_Lihat_Laporan
+
+partition "Admin" {
+    start
+    :Buka menu Laporan;
+    :Pilih rentang tanggal;
+    :Klik tombol Filter;
+    :Ambil data transaksi;
+    :Kalkulasi dan tampilkan laporan;
+    if (Export laporan?) then (yes)
+        :Klik tombol Export;
+        :Generate file laporan;
+        :Simpan atau bagikan file;
+    else (no)
+        :Lihat detail laporan;
+    endif
+    stop
+}
+
+@enduml
+
+
+@startuml Activity_Cek_Stok
+
+partition "User" {
+    start
+    :Buka Dashboard;
+    :Ambil data semua barang;
+    :Hitung dan bandingkan stok dengan minimal;
+    if (Ada barang stok rendah?) then (yes)
+        :Tampilkan notifikasi warning;
+        :Tampilkan list barang stok rendah;
+        if (Perlu restock?) then (yes)
+            :Buka menu Barang Masuk;
+        else (no)
+            :Lanjutkan aktivitas lain;
+        endif
+    else (no)
+        :Tampilkan status semua stok aman;
+    endif
+    stop
+}
+
+@enduml
+
+
+@startuml Activity_Input_Order
+
+partition "Admin" {
+    start
+    :Buka menu Manajemen Order;
+    :Klik tombol Tambah Order;
+    :Pilih barang dari daftar;
+    :Input jumlah order;
+    if (Stok mencukupi?) then (yes)
+        :Tambahkan ke keranjang;
+        if (Tambah barang lain?) then (yes)
+            :Pilih barang lain;
+        else (no)
+            :Klik tombol Simpan Order;
+            :Simpan transaksi order;
+            :Update stok berkurang;
+            :Tampilkan notifikasi sukses;
+        endif
+    else (no)
+        :Tampilkan pesan stok tidak mencukupi;
+        :Perbaiki jumlah order;
+    endif
+    stop
+}
+
+@enduml
+
+
+@startuml Activity_Input_Refund
+
+partition "Admin" {
+    start
+    :Buka menu Manajemen Refund;
+    :Klik tombol Tambah Refund;
+    :Pilih order yang akan di-refund;
+    :Input jumlah refund;
+    :Input alasan refund;
+    :Klik tombol Simpan;
+    if (Input valid?) then (yes)
+        :Simpan transaksi refund;
+        :Update status order;
+        :Tampilkan notifikasi sukses;
+    else (no)
+        :Tampilkan pesan error;
+        :Perbaiki input;
+    endif
+    stop
+}
+
+@enduml
