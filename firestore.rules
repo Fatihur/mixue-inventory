@@ -82,5 +82,11 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow create, update, delete: if isAuthenticated();
     }
+
+    // Kategori - All authenticated users can read, Admin can create/update/delete
+    match /kategori/{kategoriId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
   }
 }
